@@ -72,13 +72,14 @@ def nsf():
     ut, sett = [], set()
     for u in ["https://www.nsf.no/forsikring-og-medlemsfordeler/rabattavtaler", "https://www.nsf.no/hoteller-og-hytter"]:
         s = suppe(u)
-        for h in s.select("main h2.wp-block-heading, main h3.wp-block-heading"):
+        for h in s.select("main h2, main h3"):
             namn = re.sub(r"\s*[–-]\s*nyhet!?$", "", h.get_text(" ", strip=True))
-            if "has-background" in (h.get("class") or []) or namn in sett or namn.lower().startswith(("hvilke", "hoteller og hytter")):
+            kl = h.get("class") or []
+            if "has-background" in kl or "visually-hidden" in kl or namn.lower() in sett or namn.lower().startswith(("hvilke", "hoteller og hytter")):
                 continue
             p = h.find_next("p")
             if not p: continue
-            sett.add(namn)
+            sett.add(namn.lower())
             tekst = re.sub(r"Logg inn på nsf\.no for å (få rabatt|se rabattkoden)\.", "", p.get_text(" ", strip=True))
             ut.append(tilbod("nsf", namn, tekst))
     return ut
