@@ -50,7 +50,7 @@ def bate():
         ut.append(tilbod("bate", namn or l.split("/")[-1], meta(p), stad="Rogaland"))
     return ut
 
-def bob():
+def bob():  # IKKJE i bruk: bob.no blir bygd med JavaScript, så sidene har ikkje innhaldet i HTML-en
     xml = hent("https://www.bob.no/sitemap.xml").text
     urls = [u for u in re.findall(r"<loc>([^<]+)</loc>", xml) if re.search(r"/medlem-og-beboer/medlemsfordeler/[^/]+/$", u)]
     ut = []
@@ -69,17 +69,21 @@ def lofavor():
     return ut
 
 def nsf():
-    ut = []
+    ut, sett = [], set()
     for u in ["https://www.nsf.no/forsikring-og-medlemsfordeler/rabattavtaler", "https://www.nsf.no/hoteller-og-hytter"]:
         s = suppe(u)
-        for h in s.select("main h3, main h2"):
+        for h in s.select("main h2.wp-block-heading, main h3.wp-block-heading"):
+            namn = re.sub(r"\s*[–-]\s*nyhet!?$", "", h.get_text(" ", strip=True))
+            if "has-background" in (h.get("class") or []) or namn in sett or namn.lower().startswith(("hvilke", "hoteller og hytter")):
+                continue
             p = h.find_next("p")
-            namn = h.get_text(" ", strip=True)
-            if p and len(namn) < 60 and not namn.lower().startswith(("hvilke", "få siste")):
-                ut.append(tilbod("nsf", namn, p.get_text(" ", strip=True).replace("Logg inn på nsf.no for å få rabatt.", "").replace("Logg inn på nsf.no for å se rabattkoden.", "")))
+            if not p: continue
+            sett.add(namn)
+            tekst = re.sub(r"Logg inn på nsf\.no for å (få rabatt|se rabattkoden)\.", "", p.get_text(" ", strip=True))
+            ut.append(tilbod("nsf", namn, tekst))
     return ut
 
 # Program som berre kan hentast med nettlesar (sida blir bygd med JavaScript) eller som ikkje har
 # offentlege lister. Desse er oppdaterte for hand 24.11.2026 og blir verande som dei er til vi lagar
-# ei betre løysing: NAF, Aftenbladet Fordel, Spenn, SAS EuroBonus Mastercard, Montér Klubb.
-KJELDER = {"dealpass": dealpass, "obos": obos, "bate": bate, "bob-medlem": bob, "lofavor": lofavor, "nsf": nsf}
+# ei betre løysing: BOB, NAF, Aftenbladet Fordel, Spenn, SAS EuroBonus Mastercard, Montér Klubb.
+KJELDER = {"dealpass": dealpass, "obos": obos, "bate": bate, "lofavor": lofavor, "nsf": nsf}

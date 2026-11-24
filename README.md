@@ -13,9 +13,9 @@ Nettsida fungerer òg som app på mobilen (legg ho til på heimskjermen).
 
 ## Program som blir oppdaterte automatisk
 
-DealPass, OBOS, Bate, BOB, LO Favør og NSF.
+DealPass, OBOS, Bate, LO Favør og NSF.
 
-NAF, Aftenbladet Fordel, Spenn, SAS EuroBonus Mastercard og Montér Klubb er lagde inn for hand
+BOB, NAF, Aftenbladet Fordel, Spenn, SAS EuroBonus Mastercard og Montér Klubb er lagde inn for hand
 (24.11.2026), fordi sidene deira blir bygde med JavaScript eller ikkje har offentlege lister.
 
 ## Køyre lokalt
