@@ -1,0 +1,28 @@
+name: Byggjer iOS-appen
+
+on:
+  push:
+    branches: [app-ios, main]
+    paths: ["ios/**", "site/**", "package*.json", "capacitor.config.json", ".github/workflows/ios.yml"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bygg:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Byggjer for iPhone-simulator (utan signering)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App \
+            -sdk iphonesimulator -configuration Debug \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tail -40
+          test ${PIPESTATUS[0]} -eq 0

@@ -1,2 +1,6 @@
 site/__pycache__/
 innhenting/__pycache__/
+node_modules/
+ios/App/Pods/
+ios/App/App/public/
+ios/DerivedData/
