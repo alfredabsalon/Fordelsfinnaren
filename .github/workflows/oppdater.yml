@@ -1,0 +1,54 @@
+name: Oppdater tilbod og publiser
+
+on:
+  schedule:
+    - cron: "15 3 * * *"   # kvar natt kl. 04.15 norsk vintertid
+  workflow_dispatch:        # gjer det mogleg å køyre for hand frå GitHub
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  oppdater:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r innhenting/requirements.txt
+      - run: python innhenting/bygg.py
+      - name: Lagre nye tilbod
+        run: |
+          git config user.name "fordelsfinnaren-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add site/data.json
+          git diff --cached --quiet || git commit -m "Oppdater tilbod $(date +%F)"
+          git push
+
+  publiser:
+    needs: [oppdater]
+    if: always() && (needs.oppdater.result == 'success' || needs.oppdater.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

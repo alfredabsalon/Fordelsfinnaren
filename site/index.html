@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="nn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fordelsfinnaren</title>
+<meta name="description" content="Finn kva fordelsprogram som gir rabatt der du skal handle.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Fordelar">
+<meta name="theme-color" content="#0E6E56">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: search-first single column, results as "medlemskort"-style rows, own programs pinned as chips */
+:root {
+  --bg: #F3F6F4; --surface: #FFFFFF; --fg: #13201C; --muted: #5B6B65; --line: #D9E2DE;
+  --accent: #0E6E56; --accent-soft: #DCEFE8; --mine: #B86A12; --mine-soft: #FBEBD4;
+  --display: "Bricolage Grotesque", "Inter", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F1714; --surface: #17221E; --fg: #E6EEEA; --muted: #9AABA4; --line: #2A3833;
+  --accent: #4CC3A0; --accent-soft: #173A30; --mine: #F0B25E; --mine-soft: #3A2A12; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0F1714; --surface: #17221E; --fg: #E6EEEA; --muted: #9AABA4; --line: #2A3833;
+  --accent: #4CC3A0; --accent-soft: #173A30; --mine: #F0B25E; --mine-soft: #3A2A12; color-scheme: dark }
+* { box-sizing: border-box }
+html { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px) }
+body { margin: 0 }
+[hidden] { display: none !important }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px }
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px }
+header { padding-top: 28px; display: flex; flex-direction: column; gap: 6px }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.9rem, 6vw, 2.6rem); line-height: 1.05; margin: 0; text-wrap: balance; letter-spacing: -0.01em }
+.lede { color: var(--muted); margin: 0; max-width: 60ch }
+.search { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg) }
+#q { width: 100%; font: 500 1.1rem var(--body); padding: 14px 16px; border-radius: 12px; border: 2px solid var(--line); background: var(--surface); color: var(--fg) }
+#q:focus { outline: none; border-color: var(--accent) }
+.chips { display: flex; flex-wrap: wrap; gap: 8px }
+.chip { font: 500 0.85rem var(--body); border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 6px 12px; border-radius: 999px; cursor: pointer }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg) }
+.chip:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600 }
+.status { color: var(--muted); font-size: 0.9rem }
+.results { display: flex; flex-direction: column; gap: 10px }
+.offer { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: start }
+.offer.mine { border-color: var(--mine); box-shadow: inset 4px 0 0 var(--mine) }
+.offer h3 { margin: 0; font: 600 1.02rem var(--body); min-width: 0 }
+.offer .what { grid-column: 1; color: var(--fg); min-width: 0 }
+.offer .via { grid-column: 1; font-size: 0.88rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.pct { grid-row: 1 / span 2; grid-column: 2; font-family: var(--display); font-weight: 700; font-size: 1.5rem; color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap }
+.tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600 }
+.tag.have { background: var(--mine-soft); color: var(--mine) }
+.tag.off { background: var(--line); color: var(--muted) }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px }
+summary { cursor: pointer; font-weight: 600 }
+.prog { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px }
+.prog .chip[aria-pressed="true"] { background: var(--mine); border-color: var(--mine) }
+.grp { width: 100%; margin-top: 8px }
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 18px; color: var(--muted) }
+footer { color: var(--muted); font-size: 0.82rem }
+@media (prefers-reduced-motion: no-preference) { .offer { transition: border-color .15s } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <span class="label" id="upd">Fordelsfinnaren</span>
+    <h1>Kvar får eg rabatt?</h1>
+    <p class="lede">Søk på ein stad, ein butikk eller ein type ting, og sjå kva fordelsprogram som gir rabatt der. Marker programma du er med i, så ser du kva du alt har tilgang til.</p>
+  </header>
+
+  <div class="search">
+    <label for="q" class="label">Søk</label>
+    <input id="q" type="search" placeholder="Til dømes TusenFryd, hotell eller pizza" autocomplete="off">
+  </div>
+
+  <div class="chips" id="cats" role="group" aria-label="Kategori"></div>
+
+  <details id="mine">
+    <summary>Mine program <span class="status" id="mineCount"></span></summary>
+    <div class="prog" id="progs"></div>
+  </details>
+
+  <div class="status" id="status" aria-live="polite"></div>
+  <div class="results" id="results"></div>
+
+  <button class="chip" id="more" hidden>Vis fleire</button>
+  <footer id="foot">Lastar tilbod …</footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const norm = s => String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9æøå ]/g," ");
+let mine = new Set(); try { mine = new Set(JSON.parse(localStorage.getItem("mine") || "[]")) } catch {}
+let cat = "Alle", PROGRAM = {}, DATA = [], shown = 40;
+
+function bigrams(s){ const r=new Set(); for(let i=0;i<s.length-1;i++) r.add(s.slice(i,i+2)); return r }
+function sim(a,b){ if (a.length<3||b.length<3) return 0; const A=bigrams(a),B=bigrams(b); let n=0; A.forEach(x=>B.has(x)&&n++); return 2*n/(A.size+B.size) }
+function match(o,q){
+  if (!q) return true;
+  if (o._t.includes(q) || o._t.replace(/ /g,"").includes(q.replace(/ /g,""))) return true;
+  const words = o._t.split(" ");
+  return q.split(" ").filter(Boolean).every(w => o._t.includes(w) || words.some(x => sim(x,w) > 0.72));
+}
+function verdi(o){ return typeof o.verdi==="number" ? o.verdi+" %" : "" }
+function render(){
+  const raw = $("#q").value.trim(), q = norm(raw).trim();
+  let r = DATA.filter(o => (cat==="Alle"||o.kat===cat) && match(o,q));
+  r.sort((a,b)=> (mine.has(b.p)-mine.has(a.p)) || (!!a.sesong-!!b.sesong) || (!!a.programniva-!!b.programniva) || ((b.verdi||0)-(a.verdi||0)));
+  $("#status").textContent = r.length ? `${r.length} tilbod${q?` for «${raw}»`:""}` : "";
+  $("#results").innerHTML = r.length ? r.slice(0,shown).map(o => `
+    <article class="offer${mine.has(o.p)?" mine":""}">
+      <h3>${esc(o.namn)}</h3>
+      <div class="pct">${verdi(o)}</div>
+      <div class="what">${esc(o.tittel)}${o.stad&&!o.tittel.includes(o.stad)?` · ${esc(o.stad)}`:""}</div>
+      <div class="via">${o.programniva?"Generell fordel i":"via"} ${esc(PROGRAM[o.p]?.namn||o.p)}${mine.has(o.p)?' <span class="tag have">Du har denne</span>':""}${o.sesong?` <span class="tag off">${esc(o.sesong)}</span>`:""}</div>
+    </article>`).join("") :
+    `<div class="empty">Ingen tilbod på «${esc(raw)}» akkurat no. Nokre tilbod, som Dyreparken, kjem og går med sesongen.</div>`;
+  $("#more").hidden = r.length <= shown;
+}
+function renderProgs(){
+  const groups = {};
+  Object.entries(PROGRAM).forEach(([id,p]) => (groups[p.kat] ||= []).push([id,p]));
+  $("#progs").innerHTML = Object.entries(groups).map(([g,list]) =>
+    `<div class="label grp">${esc(g)}</div>` + list.map(([id,p])=>`<button class="chip" id="prog-${id}" data-id="${id}" aria-pressed="${mine.has(id)}">${esc(p.namn)}</button>`).join("")).join("");
+  $("#mineCount").textContent = mine.size ? `(${mine.size} valt)` : "(vel dei du er med i)";
+}
+function renderCats(){
+  const cats = ["Alle", ...[...new Set(DATA.map(o=>o.kat))].sort((a,b)=>a.localeCompare(b,"no"))];
+  $("#cats").innerHTML = cats.map(c=>`<button class="chip" aria-pressed="${c===cat}">${esc(c)}</button>`).join("");
+}
+$("#cats").addEventListener("click", e => { const b=e.target.closest("button"); if(!b) return; cat=b.textContent; shown=40;
+  [...$("#cats").children].forEach(x=>x.setAttribute("aria-pressed", x===b)); render(); });
+$("#progs").addEventListener("click", e => { const b=e.target.closest("button"); if(!b) return;
+  const id=b.dataset.id; mine.has(id)?mine.delete(id):mine.add(id);
+  try { localStorage.setItem("mine", JSON.stringify([...mine])) } catch {}
+  renderProgs(); render(); });
+$("#q").addEventListener("input", () => { shown=40; render() });
+$("#more").addEventListener("click", () => { shown += 40; render() });
+fetch("data.json").then(r=>r.json()).then(d => {
+  PROGRAM = d.program; DATA = d.tilbod;
+  if (d.oppdatert) $("#upd").textContent = "Oppdatert " + new Date(d.oppdatert).toLocaleDateString("nb-NO", {day:"numeric", month:"long", year:"numeric"});
+  DATA.forEach(o => o._t = norm([o.namn,o.tittel,o.kat,o.stad,o.sok,/hotel/i.test(o.namn)?"hotell":""].join(" ")));
+  const n = DATA.filter(o=>!o.programniva).length, np = new Set(DATA.filter(o=>!o.programniva).map(o=>o.p)).size;
+  $("#foot").textContent = `${n} tilbod frå ${np} program (mellom anna DealPass, OBOS, Bate, NAF og BOB), og hovudfordelane til alle ${Object.keys(PROGRAM).length} programma i oversikta. Tilboda kan ha endra seg. Sjekk vilkåra hos programmet før du handlar.`;
+  renderCats(); renderProgs(); render();
+}).catch(() => { $("#foot").textContent = "Klarte ikkje å laste tilboda. Prøv å laste sida på nytt." });
+</script>
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+</body>
+</html>
