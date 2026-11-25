@@ -57,6 +57,9 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .tag { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600 }
 .tag.have { background: var(--mine-soft); color: var(--mine) }
 .tag.off { background: var(--line); color: var(--muted) }
+.tag.new { background: var(--accent); color: var(--bg) }
+.news { background: var(--accent-soft); color: var(--fg); border-radius: 12px; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between }
+.news button { font: 600 0.85rem var(--body); background: var(--accent); color: var(--bg); border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer }
 details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px }
 summary { cursor: pointer; font-weight: 600 }
 .prog { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px }
@@ -88,6 +91,7 @@ footer { color: var(--muted); font-size: 0.82rem }
     <div class="prog" id="progs"></div>
   </details>
 
+  <div class="news" id="news" hidden><span id="newsText"></span><button id="newsBtn">Vis nye</button></div>
   <div class="status" id="status" aria-live="polite"></div>
   <div class="results" id="results"></div>
 
@@ -100,7 +104,28 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const norm = s => String(s||"").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9æøå ]/g," ");
 let mine = new Set(); try { mine = new Set(JSON.parse(localStorage.getItem("mine") || "[]")) } catch {}
-let cat = "Alle", PROGRAM = {}, DATA = [], shown = 40;
+let cat = "Alle", PROGRAM = {}, DATA = [], shown = 40, nye = {};
+const NY = "Nye";
+const DAGAR_NY = 14;
+const nokkel = o => o.p + "|" + o.namn + "|" + o.tittel;
+const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const DATA_URL = native ? "https://alfredabsalon.github.io/Fordelsfinnaren/data.json" : "data.json";
+const les = (k, f) => { try { return JSON.parse(localStorage.getItem(k)) ?? f } catch { return f } };
+const skriv = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} };
+
+// Hugsar kva tilbod du har sett før, og markerer dei som er nye sidan sist (i 14 dagar).
+function finnNye(){
+  const sett = les("sett", null), no = Date.now();
+  nye = les("nye", {});
+  for (const k in nye) if (no - nye[k] > DAGAR_NY * 864e5) delete nye[k];
+  const alle = DATA.filter(o => !o.programniva).map(nokkel);
+  if (sett) { const s = new Set(sett); alle.forEach(k => { if (!s.has(k) && !nye[k]) nye[k] = no }) }
+  skriv("sett", alle); skriv("nye", nye);
+  DATA.forEach(o => o._ny = !!nye[nokkel(o)]);
+  const n = DATA.filter(o => o._ny), m = n.filter(o => mine.has(o.p));
+  $("#news").hidden = !n.length;
+  $("#newsText").textContent = n.length ? `${n.length} nye tilbod sidan sist` + (mine.size ? `, ${m.length} i programma dine` : "") : "";
+}
 
 function bigrams(s){ const r=new Set(); for(let i=0;i<s.length-1;i++) r.add(s.slice(i,i+2)); return r }
 function sim(a,b){ if (a.length<3||b.length<3) return 0; const A=bigrams(a),B=bigrams(b); let n=0; A.forEach(x=>B.has(x)&&n++); return 2*n/(A.size+B.size) }
@@ -113,7 +138,7 @@ function match(o,q){
 function verdi(o){ return typeof o.verdi==="number" ? o.verdi+" %" : "" }
 function render(){
   const raw = $("#q").value.trim(), q = norm(raw).trim();
-  let r = DATA.filter(o => (cat==="Alle"||o.kat===cat) && match(o,q));
+  let r = DATA.filter(o => (cat==="Alle"||(cat===NY?o._ny:o.kat===cat)) && match(o,q));
   r.sort((a,b)=> (mine.has(b.p)-mine.has(a.p)) || (!!a.sesong-!!b.sesong) || (!!a.programniva-!!b.programniva) || ((b.verdi||0)-(a.verdi||0)));
   $("#status").textContent = r.length ? `${r.length} tilbod${q?` for «${raw}»`:""}` : "";
   $("#results").innerHTML = r.length ? r.slice(0,shown).map(o => `
@@ -121,7 +146,7 @@ function render(){
       <h3>${esc(o.namn)}</h3>
       <div class="pct">${verdi(o)}</div>
       <div class="what">${esc(o.tittel)}${o.stad&&!o.tittel.includes(o.stad)?` · ${esc(o.stad)}`:""}</div>
-      <div class="via">${o.programniva?"Generell fordel i":"via"} ${esc(PROGRAM[o.p]?.namn||o.p)}${mine.has(o.p)?' <span class="tag have">Du har denne</span>':""}${o.sesong?` <span class="tag off">${esc(o.sesong)}</span>`:""}</div>
+      <div class="via">${o.programniva?"Generell fordel i":"via"} ${esc(PROGRAM[o.p]?.namn||o.p)}${o._ny?' <span class="tag new">Ny</span>':""}${mine.has(o.p)?' <span class="tag have">Du har denne</span>':""}${o.sesong?` <span class="tag off">${esc(o.sesong)}</span>`:""}</div>
     </article>`).join("") :
     `<div class="empty">Ingen tilbod på «${esc(raw)}» akkurat no. Nokre tilbod, som Dyreparken, kjem og går med sesongen.</div>`;
   $("#more").hidden = r.length <= shown;
@@ -134,7 +159,7 @@ function renderProgs(){
   $("#mineCount").textContent = mine.size ? `(${mine.size} valt)` : "(vel dei du er med i)";
 }
 function renderCats(){
-  const cats = ["Alle", ...[...new Set(DATA.map(o=>o.kat))].sort((a,b)=>a.localeCompare(b,"no"))];
+  const cats = ["Alle", ...(DATA.some(o=>o._ny)?[NY]:[]), ...[...new Set(DATA.map(o=>o.kat))].sort((a,b)=>a.localeCompare(b,"no"))];
   $("#cats").innerHTML = cats.map(c=>`<button class="chip" aria-pressed="${c===cat}">${esc(c)}</button>`).join("");
 }
 $("#cats").addEventListener("click", e => { const b=e.target.closest("button"); if(!b) return; cat=b.textContent; shown=40;
@@ -144,16 +169,24 @@ $("#progs").addEventListener("click", e => { const b=e.target.closest("button");
   try { localStorage.setItem("mine", JSON.stringify([...mine])) } catch {}
   renderProgs(); render(); });
 $("#q").addEventListener("input", () => { shown=40; render() });
+$("#newsBtn").addEventListener("click", () => { cat = NY; shown = 40; renderCats(); render(); $("#results").scrollIntoView({behavior:"smooth"}) });
 $("#more").addEventListener("click", () => { shown += 40; render() });
-fetch("data.json").then(r=>r.json()).then(d => {
-  PROGRAM = d.program; DATA = d.tilbod;
-  if (d.oppdatert) $("#upd").textContent = "Oppdatert " + new Date(d.oppdatert).toLocaleDateString("nb-NO", {day:"numeric", month:"long", year:"numeric"});
-  DATA.forEach(o => o._t = norm([o.namn,o.tittel,o.kat,o.stad,o.sok,/hotel/i.test(o.namn)?"hotell":""].join(" ")));
-  const n = DATA.filter(o=>!o.programniva).length, np = new Set(DATA.filter(o=>!o.programniva).map(o=>o.p)).size;
-  $("#foot").textContent = `${n} tilbod frå ${np} program (mellom anna DealPass, OBOS, Bate, NAF og BOB), og hovudfordelane til alle ${Object.keys(PROGRAM).length} programma i oversikta. Tilboda kan ha endra seg. Sjekk vilkåra hos programmet før du handlar.`;
-  renderCats(); renderProgs(); render();
-}).catch(() => { $("#foot").textContent = "Klarte ikkje å laste tilboda. Prøv å laste sida på nytt." });
+function last(){
+  return fetch(DATA_URL, {cache: "no-cache"}).then(r => { if (!r.ok) throw 0; return r.json() })
+    .catch(() => native ? fetch("data.json").then(r => r.json()) : Promise.reject())
+    .then(d => {
+      PROGRAM = d.program; DATA = d.tilbod;
+      if (d.oppdatert) $("#upd").textContent = "Oppdatert " + new Date(d.oppdatert).toLocaleDateString("nb-NO", {day:"numeric", month:"long", year:"numeric"});
+      DATA.forEach(o => o._t = norm([o.namn,o.tittel,o.kat,o.stad,o.sok,/hotel/i.test(o.namn)?"hotell":""].join(" ")));
+      const n = DATA.filter(o=>!o.programniva).length, np = new Set(DATA.filter(o=>!o.programniva).map(o=>o.p)).size;
+      $("#foot").textContent = `${n} tilbod frå ${np} program og hovudfordelane til alle ${Object.keys(PROGRAM).length} programma. Tilboda blir oppdaterte kvar natt, men kan ha endra seg. Sjekk vilkåra hos programmet før du handlar.`;
+      finnNye(); renderCats(); renderProgs(); render();
+    }).catch(() => { $("#foot").textContent = "Klarte ikkje å laste tilboda. Sjekk nettilkoplinga og prøv igjen." });
+}
+last();
+// I iOS-appen: hent nye tilbod når appen blir opna att frå bakgrunnen.
+if (native) document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") last() });
 </script>
-<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+<script>if (!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
 </body>
 </html>

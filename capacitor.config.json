@@ -1,0 +1,9 @@
+{
+  "appId": "no.fordelsfinnaren.app",
+  "appName": "Fordelsfinnaren",
+  "webDir": "site",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#F3F6F4"
+  }
+}
